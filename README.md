@@ -1,0 +1,2 @@
+# kvm_user_vm_backup
+KVMのユーザモードVMをバックアップするスクリプト。
