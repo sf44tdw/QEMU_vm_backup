@@ -24,20 +24,28 @@ mkdir -pv "${XML_DUMP_DIRNAME}" || exit 2
 echo "${SORTED_VM_LIST}" | while read line;do
 	VM_RUNNING=0
 	VM_RUNNING=$(ps aux | grep "${QEMU_PROC_NAME}" | grep "${line}" | wc -l)
-	if [ 0 -eq ${VM_RUNNING} ]; then
-		QCOW_PATH=$(find "${HOME}/.local/share/libvirt/images" -name "*${line}*" 2>/dev/null | grep "\.qcow2")
+	if [ 0 -eq ${VM_RUNNING} ]; then    
 		virsh dumpxml "${line}" > "${XML_DUMP_DIRNAME}/${line}.xml"
 		RETURN=${?}
 		if [ 0 -ne ${RETURN} ]; then
 			echo "XML OUTPUT ERROR . VM:${line}" 1>&2
 			exit ${RETURN}
 		fi
-		cp "${QCOW_PATH}" "${XML_DUMP_DIRNAME}/"
-		RETURN=${?}
-		if [ 0 -ne ${RETURN} ]; then
-			echo "QCOW2 COPY ERROR . VM:${line}" 1>&2
-			exit ${RETURN}
-		fi
+  		QCOW_PATH_LIST_SRC=$(export LANG=C ; virsh domblklist "${line}" | grep '\.qcow2$')
+  		QCOW_PATH_LIST=$(echo "${QCOW_PATH_LIST_SRC}" | awk -F" " '{print $2}' | sort | uniq)
+    		echo "${QCOW_PATH_LIST}" | while read QCOW_PATH;do
+      			if [ -f ${QCOW_PATH}" ]; then
+	 			cp "${QCOW_PATH}" "${XML_DUMP_DIRNAME}/"
+				RETURN=${?}
+				if [ 0 -ne ${RETURN} ]; then
+					echo "QCOW2 COPY ERROR . VM:${line}" 1>&2
+					exit ${RETURN}
+				fi
+    			else
+       				echo "QCOW2 NOT FOUND . PATH:${QCOW_PATH}" 1>&2
+	   			exit 10
+	 		fi
+      		done
 	else
 		echo "VM ${line} IS RUNNING. SKIP." 1>&2
 	fi
