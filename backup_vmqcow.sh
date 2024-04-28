@@ -24,9 +24,9 @@
 		export LANG=C
 		virsh list --all | grep -v "^$"
 	)
-	readonly VM_LIST=$(echo "${VM_LIST_SRC}" | sed -e '1d' -e '2d' | awk -F" " '{print $2}' | sort | uniq)
+	readonly VM_LIST=$(echo "${VM_LIST_SRC}" | grep -v "^$" | sed -e '1d' -e '2d' | awk -F" " '{print $2}' | sort | uniq)
 
-	readonly VM_RUNNING_LIST=$(echo "${VM_LIST_SRC}" | grep "${VM_RUNNING_STATE}")
+	readonly VM_RUNNING_LIST=$(echo "${VM_LIST_SRC}" | grep "${VM_RUNNING_STATE}"| grep -v "^$")
 	readonly VM_RUNNING_COUNT=$(echo "${VM_RUNNING_LIST}" | grep -v "^$" | wc -l)
 	if [ 0 -ne "${VM_RUNNING_COUNT}" ]; then
 		echo "VM IS RUNNING. EXIT." 1>&2
@@ -45,7 +45,7 @@
 
 	echo "${SORTED_VM_LIST}" | while read line; do
 		VM_RUNNING=0
-		VM_RUNNING=$(pgrep -f "${QEMU_PROC_NAME}" | grep "${line}" | wc -l)
+		VM_RUNNING=$(pgrep -f "${QEMU_PROC_NAME}" | grep "${line}" | grep -v "^$" | wc -l)
 
 		if [ 0 -eq "${VM_RUNNING}" ]; then
 			VM_BACKUP_DEST="${XML_DUMP_DIRNAME}/${line}"
@@ -65,7 +65,7 @@
 				export LANG=C
 				virsh domblklist "${line}" | grep '\.qcow2$'
 			)
-			QCOW_PATH_LIST=$(echo "${QCOW_PATH_LIST_SRC}" | awk -F" " '{print $2}' | sort | uniq)
+			QCOW_PATH_LIST=$(echo "${QCOW_PATH_LIST_SRC}" | grep -v "^$" | awk -F" " '{print $2}' | sort | uniq)
 			echo "${QCOW_PATH_LIST}" | while read QCOW_PATH; do
 				if [ -f "${QCOW_PATH}" ]; then
 					cp "${QCOW_PATH}" "${VM_BACKUP_DEST}/"
