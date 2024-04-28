@@ -1,6 +1,9 @@
 #!/bin/bash
 {
-	RETURN=0
+
+	readonly START_UNIXTIME=$(date +%s)
+ 	
+  	RETURN=0
 
 	cd || exit 1
 
@@ -16,7 +19,7 @@
 	fi
 
 	readonly CURRENT_PATH=$(pwd)
-	readonly YMD_VAL=$(date +%Y%m%d%H%M%S)
+	readonly YMD_VAL=$(date -d "@${START_UNIXTIME}" +%Y%m%d%H%M%S)
 	readonly XML_DUMP_DIRNAME="${CURRENT_PATH}/kvm_vmdump_${YMD_VAL}"
 	readonly QEMU_PROC_NAME='qemu-system'
 	readonly VM_RUNNING_STATE="running"
@@ -84,7 +87,7 @@
 		fi
 	done
 
-	tar cvfz "${XML_DUMP_DIRNAME}.tgz" "${XML_DUMP_DIRNAME}"
+	tar -I pigz -cf "${XML_DUMP_DIRNAME}.tgz" "${XML_DUMP_DIRNAME}"
 	RETURN=${?}
 	if [ 0 -ne ${RETURN} ]; then
 		echo "ARCHIVE ERROR . DIRNAME:${XML_DUMP_DIRNAME}" 1>&2
@@ -97,6 +100,9 @@
 		echo "DIRECTORY DELETE ERROR . DIRNAME:${XML_DUMP_DIRNAME}" 1>&2
 		exit ${RETURN}
 	fi
+
+ 	readonly END_UNIXTIME=$(date +%s)
+	echo "TIME : $(( ${END_UNIXTIME}-${START_UNIXTIME}))"
 
 	exit 0
 }
