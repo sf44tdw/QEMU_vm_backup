@@ -13,3 +13,8 @@ dnf -y install pigz
 tar -I pigz -xf xxx.tgz
 ```
 
+配置手順
+```
+cd kvm_user_vm_backup && chmod 755 *.sh && cp -fp *.sh /usr/local/bin/
+```
+
