@@ -1,6 +1,31 @@
 #!/bin/bash
 {
 
+	declare -a COMPRESS_PIDS=()
+	declare -i COMPRESS_RESULTS=0
+	function compress_vm_files(){
+		local -r VM_FILES_DIRECTORY_PATH="${1}"
+		local RETURN=0
+		SUB_DIR_NAME=$(basename "${VM_FILES_DIRECTORY_PATH}")
+		#SUB_DIR_NAMEが実在するディレクトリであることを確認する。
+		if [ ! -d "${SUB_DIR_NAME}" ]; then
+			echo "VM BACKUP DIRECTORY NOT FOUND . DIRNAME:${SUB_DIR_NAME}" 1>&2
+			return 10
+		fi
+		#アーカイブする。
+		tar -I pigz -cf "${SUB_DIR_NAME}.tgz" "${SUB_DIR_NAME}"
+		RETURN=${?}
+		if [ 0 -ne ${RETURN} ]; then
+			echo "VM BACKUP DIRECTORY ARCHIVE ERROR . DIRNAME:${SUB_DIR_NAME}" 1>&2
+		fi
+		rm -rf "${SUB_DIR_NAME}"
+		RETURN=${?}
+		if [ 0 -ne ${RETURN} ]; then
+			echo "VM BACKUP DIRECTORY DELETE ERROR . DIRNAME:${SUB_DIR_NAME}" 1>&2
+		fi
+		return ${RETURN}
+	}
+
 	readonly START_UNIXTIME=$(date +%s)
  	
   	RETURN=0
@@ -97,20 +122,15 @@
 	
 	#XML_DUMP_DIRNAME直下にあるディレクトリごとにアーカイブする。
 	for SUB_DIR in $(find . -maxdepth 1 -type d | grep -v '^.$'); do
-		#ディレクトリ名を取得
-		SUB_DIR_NAME=$(basename "${SUB_DIR}")
-		#アーカイブする。
-		tar -I pigz -cf "${SUB_DIR_NAME}.tgz" "${SUB_DIR_NAME}"
-		RETURN=${?}
-		if [ 0 -ne ${RETURN} ]; then
-			echo "SUB DIRECTORY ARCHIVE ERROR . DIRNAME:${SUB_DIR_NAME}" 1>&2
-		fi
-		rm -rf "${SUB_DIR_NAME}"
-		RETURN=${?}
-		if [ 0 -ne ${RETURN} ]; then
-			echo "SUB DIRECTORY DELETE ERROR . DIRNAME:${SUB_DIR_NAME}" 1>&2
-		fi
+		compress_vm_files "${SUB_DIR}" &
+		COMPRESS_PIDS+=($!)
 	done
+
+	for pid in "${COMPRESS_PIDS[@]}"; do
+		wait $pid
+		COMPRESS_RESULTS+=$?
+	done
+	RETURN="${COMPRESS_RESULTS}"
 
 	tar -cf "${XML_DUMP_DIRNAME}.tar" "${XML_DUMP_DIRNAME}"
 	RETURN=${?}
@@ -129,5 +149,5 @@
  	readonly END_UNIXTIME=$(date +%s)
 	echo "TIME : $(( ${END_UNIXTIME}-${START_UNIXTIME}))"
 
-	exit 0
+	exit ${RETURN}
 }
