@@ -87,7 +87,32 @@
 		fi
 	done
 
-	tar -I pigz -cf "${XML_DUMP_DIRNAME}.tgz" "${XML_DUMP_DIRNAME}"
+	#XML_DUMP_DIRNAME直下に移動する。
+	cd "${XML_DUMP_DIRNAME}"
+	RETURN=${?}
+	if [ 0 -ne ${RETURN} ]; then
+		echo "COULD NOT CHANGE DIRECTORY . DIRNAME:${XML_DUMP_DIRNAME}" 1>&2
+		exit ${RETURN}
+	fi
+	
+	#XML_DUMP_DIRNAME直下にあるディレクトリごとにアーカイブする。
+	for SUB_DIR in $(find . -maxdepth 1 -type d | grep -v '^.$'); do
+		#ディレクトリ名を取得
+		SUB_DIR_NAME=$(basename "${SUB_DIR}")
+		#アーカイブする。
+		tar -I pigz -cf "${SUB_DIR_NAME}.tgz" "${SUB_DIR_NAME}"
+		RETURN=${?}
+		if [ 0 -ne ${RETURN} ]; then
+			echo "SUB DIRECTORY ARCHIVE ERROR . DIRNAME:${SUB_DIR_NAME}" 1>&2
+		fi
+		rm -rf "${SUB_DIR_NAME}"
+		RETURN=${?}
+		if [ 0 -ne ${RETURN} ]; then
+			echo "SUB DIRECTORY DELETE ERROR . DIRNAME:${SUB_DIR_NAME}" 1>&2
+		fi
+	done
+
+	tar -cf "${XML_DUMP_DIRNAME}.tar" "${XML_DUMP_DIRNAME}"
 	RETURN=${?}
 	if [ 0 -ne ${RETURN} ]; then
 		echo "ARCHIVE ERROR . DIRNAME:${XML_DUMP_DIRNAME}" 1>&2
