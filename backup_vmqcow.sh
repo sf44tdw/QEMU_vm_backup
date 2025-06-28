@@ -130,7 +130,7 @@
 		wait $pid
 		COMPRESS_RESULTS+=$?
 	done
-	RETURN=${COMPRESS_RESULTS}
+	RETURN="${COMPRESS_RESULTS}"
 
 	tar -cf "${XML_DUMP_DIRNAME}.tar" "${XML_DUMP_DIRNAME}"
 	RETURN=${?}
