@@ -147,7 +147,7 @@
 				rm -rf "${VM_BACKUP_DEST}"
 				continue
 			}
-			readonly QCOW_PATH_LIST_SRC="${QCOW_PATH_LIST_SRC_TEMP}"
+			QCOW_PATH_LIST_SRC="${QCOW_PATH_LIST_SRC_TEMP}"
 			QCOW_PATH_LIST=$(echo "${QCOW_PATH_LIST_SRC}" | grep -v "^$" | awk -F" " '{print $2}' | sort | uniq)
 			echo "${QCOW_PATH_LIST}" | while read QCOW_PATH; do
 				# QCOW2ファイルコピー前に再度VM状態をチェック
