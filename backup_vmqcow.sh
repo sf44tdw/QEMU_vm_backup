@@ -5,8 +5,8 @@
 	declare -i COMPRESS_RESULTS=0
 	
 	readonly QEMU_PROC_NAME='qemu-system'
-	readonly VM_RUNNING_STATE="running"
-	readonly VM_SHUT_OFF_STATE="shut off"
+	readonly VM_RUNNING_STATE='running'
+	readonly VM_SHUT_OFF_STATE='shut off'
 	# VM状態チェック関数
 	function check_vm_state(){
 		local -r VM_NAME="${1}"
@@ -18,7 +18,7 @@
 			return 1
 		fi
 		
-		if [[ "${CHECK_TYPE}" == "strict" ]]; then
+		if [[ "${CHECK_TYPE}" = 'strict' ]]; then
 			# 厳密チェック：複数回の状態確認
 			local VM_STATE1=$(export LANG=C ; virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
 			local VM_PROC_COUNT=$(pgrep -f "${QEMU_PROC_NAME}" | grep "${VM_NAME}" | grep -v "^$" | wc -l)
@@ -26,7 +26,7 @@
 			local VM_STATE2=$(export LANG=C ; virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
 			
 			# 両方のチェックで停止状態かつプロセスが存在しないことを確認
-			if [[ "${VM_STATE1}" == "${VM_SHUT_OFF_STATE}" ]] && [[ "${VM_STATE2}" == "${VM_SHUT_OFF_STATE}" ]] && [ 0 -eq "${VM_PROC_COUNT}" ]; then
+			if [[ "${VM_STATE1}" = "${VM_SHUT_OFF_STATE}" ]] && [[ "${VM_STATE2}" = "${VM_SHUT_OFF_STATE}" ]] && [ 0 -eq "${VM_PROC_COUNT}" ]; then
 				return 0  # VM停止中
 			else
 				return 1  # VM実行中または不明
@@ -34,7 +34,7 @@
 		else
 			# 通常チェック：単回の状態確認
 			local VM_STATE=$(export LANG=C ; virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
-			if [[ "${VM_STATE}" == "${VM_SHUT_OFF_STATE}" ]]; then
+			if [[ "${VM_STATE}" = "${VM_SHUT_OFF_STATE}" ]]; then
 				return 0  # VM停止中
 			else
 				return 1  # VM実行中または不明
@@ -91,7 +91,7 @@
 		export LANG=C
 		virsh list --all | grep -v "^$"
 	) || {
-		echo "FAILED TO GET VM LIST. Check if libvirt is running and you have proper permissions." 1>&2
+		echo "FAILED TO GET VM LIST. CHECK IF LIBVIRT IS RUNNING AND YOU HAVE PROPER PERMISSIONS." 1>&2
 		exit 30
 	}
 	readonly VM_LIST_SRC="${VM_LIST_SRC_TEMP}"
