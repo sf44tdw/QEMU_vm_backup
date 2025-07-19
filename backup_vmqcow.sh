@@ -85,10 +85,16 @@
 	readonly CURRENT_PATH=$(pwd)
 	readonly YMD_VAL=$(date -d "@${START_UNIXTIME}" +%Y%m%d%H%M%S)
 	readonly XML_DUMP_DIRNAME="${CURRENT_PATH}/kvm_vmdump_${YMD_VAL}"
-	readonly VM_LIST_SRC=$(
+	
+	# VM一覧を取得（エラーハンドリング付き）
+	VM_LIST_SRC_TEMP=$(
 		export LANG=C
 		virsh list --all | grep -v "^$"
-	)
+	) || {
+		echo "FAILED TO GET VM LIST. Check if libvirt is running and you have proper permissions." 1>&2
+		exit 30
+	}
+	readonly VM_LIST_SRC="${VM_LIST_SRC_TEMP}"
 	readonly VM_LIST=$(echo "${VM_LIST_SRC}" | grep -v "^$" | sed -e '1d' -e '2d' | awk -F" " '{print $2}' | sort | uniq)
 
 	readonly VM_RUNNING_LIST=$(echo "${VM_LIST_SRC}" | grep "${VM_RUNNING_STATE}"| grep -v "^$")
@@ -132,10 +138,16 @@
 				echo "XML OUTPUT ERROR . VM:${line}" 1>&2
 				exit ${RETURN}
 			fi
-			QCOW_PATH_LIST_SRC=$(
+			# VMのディスクリストを取得（エラーハンドリング付き）
+			QCOW_PATH_LIST_SRC_TEMP=$(
 				export LANG=C
 				virsh domblklist "${line}" | grep '\.qcow2$'
-			)
+			) || {
+				echo "FAILED TO GET DISK LIST FOR VM:${line}. Skipping this VM." 1>&2
+				rm -rf "${VM_BACKUP_DEST}"
+				continue
+			}
+			readonly QCOW_PATH_LIST_SRC="${QCOW_PATH_LIST_SRC_TEMP}"
 			QCOW_PATH_LIST=$(echo "${QCOW_PATH_LIST_SRC}" | grep -v "^$" | awk -F" " '{print $2}' | sort | uniq)
 			echo "${QCOW_PATH_LIST}" | while read QCOW_PATH; do
 				# QCOW2ファイルコピー前に再度VM状態をチェック
