@@ -3,6 +3,45 @@
 
 	declare -a COMPRESS_PIDS=()
 	declare -i COMPRESS_RESULTS=0
+	
+	readonly QEMU_PROC_NAME='qemu-system'
+	readonly VM_RUNNING_STATE="running"
+	readonly VM_SHUT_OFF_STATE="shut off"
+	# VM状態チェック関数
+	function check_vm_state(){
+		local -r VM_NAME="${1}"
+		local -r CHECK_TYPE="${2:-normal}"  # normal, strict
+		
+		# VM名の入力値検証
+		if [[ ! "${VM_NAME}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+			echo "INVALID VM NAME . VM:${VM_NAME}" 1>&2
+			return 1
+		fi
+		
+		if [[ "${CHECK_TYPE}" == "strict" ]]; then
+			# 厳密チェック：複数回の状態確認
+			local VM_STATE1=$(virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
+			local VM_PROC_COUNT=$(pgrep -f "${QEMU_PROC_NAME}" | grep "${VM_NAME}" | grep -v "^$" | wc -l)
+			sleep 0.5  # 短い待機時間でタイミングをずらす
+			local VM_STATE2=$(virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
+			
+			# 両方のチェックで停止状態かつプロセスが存在しないことを確認
+			if [[ "${VM_STATE1}" == "${VM_SHUT_OFF_STATE}" ]] && [[ "${VM_STATE2}" == "${VM_SHUT_OFF_STATE}" ]] && [ 0 -eq "${VM_PROC_COUNT}" ]; then
+				return 0  # VM停止中
+			else
+				return 1  # VM実行中または不明
+			fi
+		else
+			# 通常チェック：単回の状態確認
+			local VM_STATE=$(virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
+			if [[ "${VM_STATE}" == "${VM_SHUT_OFF_STATE}" ]]; then
+				return 0  # VM停止中
+			else
+				return 1  # VM実行中または不明
+			fi
+		fi
+	}
+	
 	function compress_vm_files(){
 		local -r VM_FILES_DIRECTORY_PATH="${1}"
 		local RETURN=0
@@ -46,8 +85,6 @@
 	readonly CURRENT_PATH=$(pwd)
 	readonly YMD_VAL=$(date -d "@${START_UNIXTIME}" +%Y%m%d%H%M%S)
 	readonly XML_DUMP_DIRNAME="${CURRENT_PATH}/kvm_vmdump_${YMD_VAL}"
-	readonly QEMU_PROC_NAME='qemu-system'
-	readonly VM_RUNNING_STATE="running"
 	readonly VM_LIST_SRC=$(
 		export LANG=C
 		virsh list --all | grep -v "^$"
@@ -72,10 +109,8 @@
 	fi
 
 	echo "${SORTED_VM_LIST}" | while read line; do
-		VM_RUNNING=0
-		VM_RUNNING=$(pgrep -f "${QEMU_PROC_NAME}" | grep "${line}" | grep -v "^$" | wc -l)
-
-		if [ 0 -eq "${VM_RUNNING}" ]; then
+		# 厳密なVM状態チェックを実行
+		if check_vm_state "${line}" "strict"; then
 			VM_BACKUP_DEST="${XML_DUMP_DIRNAME}/${line}"
 			mkdir -pv "${VM_BACKUP_DEST}"
 			RETURN=${?}
@@ -83,6 +118,14 @@
 				echo "COULD NOT MAKE DUMP  SUB DIRECTORY . DIRNAME:${VM_BACKUP_DEST}" 1>&2
 				exit ${RETURN}
 			fi
+			
+			# バックアップ処理開始前に再度VM状態をチェック
+			if ! check_vm_state "${line}" "normal"; then
+				echo "VM ${line} STARTED DURING BACKUP PREPARATION. ABORTING." 1>&2
+				rm -rf "${VM_BACKUP_DEST}"
+				continue
+			fi
+			
 			virsh dumpxml "${line}" >"${VM_BACKUP_DEST}/${line}.xml"
 			RETURN=${?}
 			if [ 0 -ne ${RETURN} ]; then
@@ -95,12 +138,26 @@
 			)
 			QCOW_PATH_LIST=$(echo "${QCOW_PATH_LIST_SRC}" | grep -v "^$" | awk -F" " '{print $2}' | sort | uniq)
 			echo "${QCOW_PATH_LIST}" | while read QCOW_PATH; do
+				# QCOW2ファイルコピー前に再度VM状態をチェック
+				if ! check_vm_state "${line}" "normal"; then
+					echo "VM ${line} STARTED DURING QCOW2 COPY. ABORTING." 1>&2
+					rm -rf "${VM_BACKUP_DEST}"
+					break
+				fi
+				
 				if [ -f "${QCOW_PATH}" ]; then
 					cp "${QCOW_PATH}" "${VM_BACKUP_DEST}/"
 					RETURN=${?}
 					if [ 0 -ne ${RETURN} ]; then
 						echo "QCOW2 COPY ERROR . VM:${line}" 1>&2
 						exit ${RETURN}
+					fi
+					
+					# コピー後も状態をチェック
+					if ! check_vm_state "${line}" "normal"; then
+						echo "VM ${line} STARTED DURING QCOW2 COPY. BACKUP MAY BE INCONSISTENT." 1>&2
+						rm -rf "${VM_BACKUP_DEST}"
+						break
 					fi
 				else
 					echo "QCOW2 NOT FOUND . PATH:${QCOW_PATH}" 1>&2
