@@ -66,8 +66,11 @@
 	}
 
 	readonly START_UNIXTIME=$(date +%s)
- 	
-  	RETURN=0
+ 	readonly CURRENT_PATH=$(pwd)
+	readonly YMD_VAL=$(date -d "@${START_UNIXTIME}" +%Y%m%d%H%M%S)
+	readonly XML_DUMP_DIRNAME="${CURRENT_PATH}/kvm_vmdump_${YMD_VAL}"
+  	
+	RETURN=0
 
 	cd || exit 1
 
@@ -81,10 +84,6 @@
 	else
 		exit 220
 	fi
-
-	readonly CURRENT_PATH=$(pwd)
-	readonly YMD_VAL=$(date -d "@${START_UNIXTIME}" +%Y%m%d%H%M%S)
-	readonly XML_DUMP_DIRNAME="${CURRENT_PATH}/kvm_vmdump_${YMD_VAL}"
 	
 	# VM一覧を取得（エラーハンドリング付き）
 	VM_LIST_SRC_TEMP=$(

@@ -1,6 +1,10 @@
 # kvm_user_vm_backup
 QEMU環境のVMをバックアップするスクリプト。
+
+スクリプトを実行したときのカレントディレクトリ下に以下のファイルをバックアップする。
+
 root以外のユーザで実行した場合は、実行したユーザの~/.config/libvirt/下のユーザモードVMと、~/.local/share/libvirt/images下のqcow2ディスクイメージをバックアップする。
+
 rootユーザで実行した場合は、/etc/libvirt/qemu下のVMと、それらのVMの/var/lib/libvirt/images下のqcow2ディスクイメージをバックアップする。
 
 注意 アーカイブの圧縮にpigzを使用するのでインストールしておく必要がある。
