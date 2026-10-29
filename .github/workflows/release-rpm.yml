@@ -1,0 +1,46 @@
+name: Build and attach RPM
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Install RPM build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes rpm
+
+      - name: Build noarch RPM
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "${RELEASE_TAG}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must be a semantic version, optionally prefixed with v: ${RELEASE_TAG}" >&2
+            exit 1
+          fi
+          VERSION="${RELEASE_TAG#v}"
+          rpmbuild -bb \
+            --define "_topdir ${RUNNER_TEMP}/rpmbuild" \
+            --define "_sourcedir ${GITHUB_WORKSPACE}" \
+            --define "pkg_version ${VERSION}" \
+            packaging/backup-vmqcow.spec
+
+      - name: Upload RPM to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          RPM_FILE="${RUNNER_TEMP}/rpmbuild/RPMS/noarch/backup-vmqcow-${VERSION}-1.noarch.rpm"
+          gh release upload "${RELEASE_TAG}" "${RPM_FILE}" --clobber
