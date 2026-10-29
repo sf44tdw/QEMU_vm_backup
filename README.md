@@ -21,10 +21,11 @@ tar -I pigz -xf xxx.tgz
 
 RPMパッケージ
 ```
-sudo dnf install ./backup-vmqcow-1.0.0-1.noarch.rpm
+VERSION=1.0.0
+sudo dnf install ./backup-vmqcow-"${VERSION}"-1*.noarch.rpm
 ```
 
-上記のファイル名のバージョン部分は、利用するリリースに合わせて置き換えてください。RPMをインストールすると、`backup_vmqcow.sh`は`/usr/bin/backup_vmqcow.sh`に配置されます。依存コマンドもRPM経由でインストールされます。GitHub Releasesで公開されたリリースには、ビルド済みRPMが添付されます。
+`VERSION`は利用するリリースのバージョンに置き換えてください。RPMをインストールすると、`backup_vmqcow.sh`は`/usr/bin/backup_vmqcow.sh`に配置されます。依存コマンドもRPM経由でインストールされます。GitHub Releasesで公開されたリリースには、ビルド済みRPMが添付されます。
 
 手動で配置する場合
 ```

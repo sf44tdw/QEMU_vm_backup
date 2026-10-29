@@ -42,5 +42,12 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           VERSION="${RELEASE_TAG#v}"
-          RPM_FILE="${RUNNER_TEMP}/rpmbuild/RPMS/noarch/backup-vmqcow-${VERSION}-1.noarch.rpm"
+          RPM_FILE="$(find "${RUNNER_TEMP}/rpmbuild/RPMS/noarch" \
+            -maxdepth 1 -type f \
+            -name "backup-vmqcow-${VERSION}-1*.noarch.rpm" \
+            -print -quit)"
+          if [[ -z "${RPM_FILE}" ]]; then
+            echo "Could not find the built noarch RPM for version ${VERSION}" >&2
+            exit 1
+          fi
           gh release upload "${RELEASE_TAG}" "${RPM_FILE}" --clobber
