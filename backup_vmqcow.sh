@@ -7,7 +7,19 @@
 	readonly QEMU_PROC_NAME='qemu-system'
 	readonly VM_RUNNING_STATE='running'
 	readonly VM_SHUT_OFF_STATE='shut off'
-	# VM状態チェック関数
+	# VM状態チェック(バックエンド)。停止中かつプロセスなしなら0、それ以外は1を返す。
+	function is_vm_shut_off(){
+		local -r VM_NAME="${1}"
+		local -r VM_STATE=$(export LANG=C ; virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
+		local -r VM_PROC_COUNT=$(pgrep -f "${QEMU_PROC_NAME}" | grep "${VM_NAME}" | grep -v "^$" | wc -l)
+		if [[ "${VM_STATE}" = "${VM_SHUT_OFF_STATE}" ]] && [ 0 -eq "${VM_PROC_COUNT}" ]; then
+			return 0  # VM停止中
+		else
+			return 1  # VM実行中または不明
+		fi
+	}
+
+	# VM状態チェック関数(フロントエンド)
 	function check_vm_state(){
 		local -r VM_NAME="${1}"
 		local -r CHECK_TYPE="${2:-normal}"  # normal, strict
@@ -19,26 +31,15 @@
 		fi
 		
 		if [[ "${CHECK_TYPE}" = 'strict' ]]; then
-			# 厳密チェック：複数回の状態確認
-			local VM_STATE1=$(export LANG=C ; virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
-			local VM_PROC_COUNT=$(pgrep -f "${QEMU_PROC_NAME}" | grep "${VM_NAME}" | grep -v "^$" | wc -l)
-			sleep 0.5  # 短い待機時間でタイミングをずらす
-			local VM_STATE2=$(export LANG=C ; virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
-			
-			# 両方のチェックで停止状態かつプロセスが存在しないことを確認
-			if [[ "${VM_STATE1}" = "${VM_SHUT_OFF_STATE}" ]] && [[ "${VM_STATE2}" = "${VM_SHUT_OFF_STATE}" ]] && [ 0 -eq "${VM_PROC_COUNT}" ]; then
-				return 0  # VM停止中
-			else
-				return 1  # VM実行中または不明
-			fi
+			# 厳密チェック：短い待機時間でタイミングをずらして2回確認し、両方で停止中であること
+			is_vm_shut_off "${VM_NAME}" || return 1
+			sleep 0.5
+			is_vm_shut_off "${VM_NAME}"
+			return ${?}
 		else
 			# 通常チェック：単回の状態確認
-			local VM_STATE=$(export LANG=C ; virsh domstate "${VM_NAME}" 2>/dev/null || echo "unknown")
-			if [[ "${VM_STATE}" = "${VM_SHUT_OFF_STATE}" ]]; then
-				return 0  # VM停止中
-			else
-				return 1  # VM実行中または不明
-			fi
+			is_vm_shut_off "${VM_NAME}"
+			return ${?}
 		fi
 	}
 	
