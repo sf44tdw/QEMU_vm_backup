@@ -19,10 +19,17 @@ dnf -y install pigz
 tar -I pigz -xf xxx.tgz
 ```
 
-配置手順
+RPMパッケージ
+```
+VERSION=1.0.0
+sudo dnf install ./backup-vmqcow-"${VERSION}"-1*.noarch.rpm
+```
+
+`VERSION`は利用するリリースのバージョンに置き換えてください。RPMをインストールすると、`backup_vmqcow.sh`は`/usr/bin/backup_vmqcow.sh`に配置されます。依存コマンドもRPM経由でインストールされます。GitHub Releasesで公開されたリリースには、ビルド済みRPMが添付されます。
+
+手動で配置する場合
 ```
 ls -l /usr/local/bin/*
 cd && cd QEMU_vm_backup && chmod 755 *.sh && cp -fp *.sh /usr/local/bin/
 ls -l /usr/local/bin/*
 ```
-
