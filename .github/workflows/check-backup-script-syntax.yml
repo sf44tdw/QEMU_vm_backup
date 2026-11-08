@@ -1,0 +1,21 @@
+name: Check backup script syntax
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  bash-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Check backup_vmqcow.sh syntax
+        run: bash -n backup_vmqcow.sh
