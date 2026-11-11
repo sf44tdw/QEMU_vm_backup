@@ -33,3 +33,5 @@ ls -l /usr/local/bin/*
 cd && cd QEMU_vm_backup && chmod 755 *.sh && cp -fp *.sh /usr/local/bin/
 ls -l /usr/local/bin/*
 ```
+
+/etc/libvirt/qemu下のVMと、それらのVMの/var/lib/libvirt/images下のqcow2ディスクイメージをリストアする場合は、オーナーをqemu:qemu,パーミッションを640にすること。
